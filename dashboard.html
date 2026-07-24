@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HS Dashboard</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+<style>
+  :root{
+    --bg-0:#07090f;
+    --bg-1:#0c1018;
+    --surface:rgba(255,255,255,0.055);
+    --surface-strong:rgba(255,255,255,0.09);
+    --surface-hover:rgba(255,255,255,0.12);
+    --border:rgba(255,255,255,0.10);
+    --border-strong:rgba(255,255,255,0.18);
+    --primary:#93A1FF;
+    --primary-dim:#5A64B8;
+    --secondary:#FFB37B;
+    --tertiary:#6EE7C0;
+    --danger:#FF8A8A;
+    --text-0:#F5F6FA;
+    --text-1:rgba(245,246,250,0.66);
+    --text-2:rgba(245,246,250,0.40);
+    --radius-xl:28px;
+    --radius-lg:20px;
+    --radius-md:14px;
+    --radius-sm:10px;
+    --font-display:'Pretendard', -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+    --font-body:'Pretendard', -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+    --font-mono:'Pretendard', -apple-system, 'SF Pro Rounded', sans-serif;
+  }
+
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%;}
+  body{
+    font-family:var(--font-body);
+    color:var(--text-0);
+    background:var(--bg-0);
+    overflow:hidden;
+    -webkit-font-smoothing:antialiased;
+    letter-spacing:-0.01em;
+  }
+
+  .aurora{position:fixed;inset:0;z-index:0;overflow:hidden;background:var(--bg-0);}
+  .aurora::before,.aurora::after{content:'';position:absolute;width:60vw;height:60vw;border-radius:50%;filter:blur(120px);opacity:0.35;will-change:transform;}
+  .aurora::before{background:radial-gradient(circle,var(--primary),transparent 70%);top:-20%;left:-10%;animation:drift1 32s ease-in-out infinite alternate;}
+  .aurora::after{background:radial-gradient(circle,var(--secondary),transparent 70%);bottom:-25%;right:-10%;animation:drift2 28s ease-in-out infinite alternate;}
+  @keyframes drift1{to{transform:translate(8vw,6vh) scale(1.15);}}
+  @keyframes drift2{to{transform:translate(-6vw,-8vh) scale(1.1);}}
+  .noise{position:fixed;inset:0;z-index:1;pointer-events:none;opacity:0.035;mix-blend-mode:overlay;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");}
+
+  .app{position:relative;z-index:2;height:100vh;width:100vw;display:flex;flex-direction:column;padding:28px 34px 20px;gap:20px;}
+
+  .topbar{display:flex;align-items:baseline;justify-content:space-between;}
+  .topbar .date{font-family:var(--font-display);font-size:15px;font-weight:600;color:var(--text-1);letter-spacing:0.02em;}
+  .topbar .date b{color:var(--text-0);font-weight:700;}
+  .icon-btn{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--surface);border:1px solid var(--border);color:var(--text-1);cursor:pointer;transition:background .18s ease,color .18s ease,transform .18s ease;}
+  .icon-btn:hover{background:var(--surface-hover);color:var(--text-0);transform:rotate(24deg);}
+  .icon-btn svg{width:18px;height:18px;}
+
+  .grid{flex:1;min-height:0;display:grid;grid-template-columns:1.15fr 0.85fr;gap:20px;}
+  .col-right{display:flex;flex-direction:column;gap:20px;min-height:0;}
+
+  .card{position:relative;background:var(--surface);backdrop-filter:blur(28px) saturate(140%);-webkit-backdrop-filter:blur(28px) saturate(140%);border:1px solid var(--border);border-radius:var(--radius-xl);box-shadow:0 20px 50px -20px rgba(0,0,0,0.55),inset 0 1px 0 rgba(255,255,255,0.06);padding:22px 24px;display:flex;flex-direction:column;}
+  .card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+  .card-title{font-family:var(--font-display);font-size:13px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-2);}
+  .pill{font-size:11px;font-weight:600;padding:4px 10px;border-radius:100px;border:1px solid var(--border);color:var(--text-1);display:flex;align-items:center;gap:6px;cursor:pointer;transition:background .15s ease;}
+  .pill:hover{background:var(--surface-hover);}
+  .pill.live{color:var(--tertiary);border-color:rgba(110,231,192,0.3);background:rgba(110,231,192,0.08);}
+  .pill .dot{width:6px;height:6px;border-radius:50%;background:currentColor;}
+
+  /* Timeline */
+  .timeline-card{flex:1;overflow:hidden;}
+  .timeline-scroll{flex:1;overflow-y:auto;margin:0 -8px;padding:0 8px;-ms-overflow-style:none;scrollbar-width:thin;}
+  .timeline-scroll::-webkit-scrollbar{width:5px;}
+  .timeline-scroll::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:10px;}
+  .timeline{position:relative;padding-left:56px;}
+  .timeline::before{content:'';position:absolute;left:44px;top:4px;bottom:4px;width:1px;background:linear-gradient(to bottom,transparent,var(--border-strong) 4%,var(--border-strong) 96%,transparent);}
+  .hour-row{position:relative;min-height:64px;display:flex;align-items:flex-start;}
+  .hour-label{position:absolute;left:-56px;top:-7px;width:44px;text-align:right;font-family:var(--font-mono);font-size:11px;color:var(--text-2);font-variant-numeric:tabular-nums;}
+  .hour-tick{position:absolute;left:-3px;top:0;width:7px;height:7px;border-radius:50%;background:var(--bg-1);border:1px solid var(--border-strong);}
+  .events-in-hour{margin-left:14px;display:flex;flex-direction:column;gap:6px;width:100%;}
+  .event-chip{background:var(--surface-strong);border:1px solid var(--border);border-left:3px solid var(--primary);border-radius:var(--radius-sm);padding:8px 12px;font-size:13px;font-weight:600;color:var(--text-0);display:flex;flex-direction:column;gap:2px;transition:background .15s ease,transform .15s ease;}
+  .event-chip:hover{background:var(--surface-hover);transform:translateX(2px);}
+  .event-chip .t{font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--primary);font-variant-numeric:tabular-nums;}
+  .event-chip.done{opacity:0.38;}
+  .event-chip.done .t{color:var(--text-2);}
+  .now-line{position:absolute;left:-9px;right:0;height:0;display:flex;align-items:center;z-index:3;pointer-events:none;}
+  .now-line .dot{width:13px;height:13px;border-radius:50%;background:var(--tertiary);box-shadow:0 0 0 4px rgba(110,231,192,0.18),0 0 16px rgba(110,231,192,0.7);flex-shrink:0;}
+  .now-line .line{flex:1;height:1px;background:linear-gradient(to right,var(--tertiary),transparent 85%);}
+  .now-line .label{font-family:var(--font-mono);font-size:10px;font-weight:700;color:var(--tertiary);margin-left:8px;background:var(--bg-1);padding:2px 6px;border-radius:6px;}
+  .empty-state,.auth-state{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:12px;color:var(--text-2);padding:20px;}
+  .auth-state svg{width:34px;height:34px;opacity:0.5;}
+  .auth-state p{font-size:13px;max-width:260px;line-height:1.6;color:var(--text-1);}
+  .btn{font-family:var(--font-display);font-size:13px;font-weight:700;padding:10px 20px;border-radius:100px;border:none;cursor:pointer;background:var(--primary);color:#101225;transition:filter .15s ease,transform .15s ease;}
+  .btn:hover{filter:brightness(1.1);transform:translateY(-1px);}
+  .btn.ghost{background:transparent;border:1px solid var(--border-strong);color:var(--text-0);}
+
+  /* Clock */
+  .clock-card{flex:1.05;align-items:center;justify-content:center;text-align:center;gap:6px;}
+  .clock-time{font-family:var(--font-mono);font-weight:700;font-size:clamp(48px,6.2vw,86px);line-height:1;letter-spacing:-0.02em;font-variant-numeric:tabular-nums;display:flex;align-items:baseline;justify-content:center;gap:2px;}
+  .clock-time .sec{font-size:0.38em;color:var(--text-2);font-weight:600;margin-left:6px;}
+  .clock-sub{font-size:14px;color:var(--text-1);font-weight:600;margin-top:6px;}
+  .clock-sub b{color:var(--primary);}
+  .day-ring-wrap{margin-top:18px;position:relative;width:64px;height:64px;}
+  .day-ring-wrap svg{transform:rotate(-90deg);}
+  .day-ring-bg{fill:none;stroke:var(--border);stroke-width:5;}
+  .day-ring-fg{fill:none;stroke:var(--primary);stroke-width:5;stroke-linecap:round;transition:stroke-dashoffset 1s linear;}
+  .day-ring-label{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:var(--text-2);font-family:var(--font-mono);}
+
+  /* Weather */
+  .weather-card{flex:0.95;}
+  .weather-main{display:flex;align-items:center;justify-content:space-between;flex:1;}
+  .weather-temp{font-family:var(--font-mono);font-size:clamp(40px,4.6vw,58px);font-weight:700;line-height:1;}
+  .weather-city{font-size:13px;font-weight:600;color:var(--text-1);margin-top:6px;}
+  .weather-desc{font-size:12px;color:var(--text-2);margin-top:2px;}
+  .weather-icon{width:66px;height:66px;color:var(--secondary);}
+  .weather-meta{display:flex;gap:16px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);}
+  .weather-meta div{flex:1;text-align:center;}
+  .weather-meta .v{font-family:var(--font-mono);font-size:15px;font-weight:700;color:var(--text-0);}
+  .weather-meta .k{font-size:10px;color:var(--text-2);margin-top:2px;letter-spacing:0.04em;text-transform:uppercase;}
+
+  /* Settings Modal */
+  .overlay{position:fixed;inset:0;z-index:10;background:rgba(4,5,9,0.6);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s ease;}
+  .overlay.open{opacity:1;pointer-events:auto;}
+  .modal{width:440px;max-width:92vw;max-height:88vh;overflow-y:auto;background:var(--bg-1);border:1px solid var(--border-strong);border-radius:var(--radius-lg);padding:26px;box-shadow:0 30px 80px -20px rgba(0,0,0,0.7);transform:translateY(12px) scale(0.98);transition:transform .2s ease;}
+  .overlay.open .modal{transform:translateY(0) scale(1);}
+  .modal h2{font-family:var(--font-display);font-size:18px;font-weight:700;margin-bottom:20px;}
+  .modal-section{font-size:11px;font-weight:700;color:var(--text-2);letter-spacing:0.08em;text-transform:uppercase;margin:20px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+  .modal-section:first-of-type{margin-top:0;}
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:12px;font-weight:600;color:var(--text-1);margin-bottom:6px;}
+  .field input{width:100%;padding:10px 12px;border-radius:var(--radius-sm);background:rgba(255,255,255,0.05);border:1px solid var(--border-strong);color:var(--text-0);font-size:13px;font-family:var(--font-mono);outline:none;transition:border-color .15s;}
+  .field input:focus{border-color:var(--primary);}
+  .field .hint{font-size:11px;color:var(--text-2);margin-top:5px;line-height:1.5;}
+  .field .hint a{color:var(--primary);text-decoration:none;}
+  .gcal-connect-btn{width:100%;margin-top:4px;display:flex;align-items:center;justify-content:center;gap:8px;padding:11px;border-radius:var(--radius-sm);border:1px solid var(--border-strong);background:rgba(255,255,255,0.05);color:var(--text-0);font-family:var(--font-display);font-size:13px;font-weight:700;cursor:pointer;transition:background .15s;}
+  .gcal-connect-btn:hover{background:var(--surface-hover);}
+  .gcal-connected-banner{display:flex;align-items:center;justify-content:space-between;background:rgba(110,231,192,0.08);border:1px solid rgba(110,231,192,0.25);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:4px;}
+  .gcal-connected-text{font-size:13px;font-weight:600;color:var(--tertiary);display:flex;align-items:center;gap:6px;}
+  .gcal-disconnect-btn{background:rgba(255,100,100,0.12);border:1px solid rgba(255,100,100,0.25);color:#FF8A8A;border-radius:6px;padding:5px 12px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;transition:opacity .15s;}
+  .gcal-disconnect-btn:hover{opacity:0.75;}
+  .wx-save-btn{width:100%;margin-top:4px;padding:11px;border-radius:var(--radius-sm);border:1px solid var(--border-strong);background:rgba(255,255,255,0.05);color:var(--text-0);font-family:var(--font-display);font-size:13px;font-weight:700;cursor:pointer;transition:background .15s;}
+  .wx-save-btn:hover{background:var(--surface-hover);}
+  .modal-actions{display:flex;gap:10px;margin-top:22px;}
+  .modal-actions .btn{flex:1;}
+
+  footer.brand{text-align:center;font-size:11px;color:var(--text-2);letter-spacing:0.04em;padding-top:2px;}
+  footer.brand b{color:var(--text-1);}
+
+  @media(max-width:980px){.grid{grid-template-columns:1fr;}.col-right{flex-direction:row;}}
+  @media(max-width:640px){.col-right{flex-direction:column;}}
+</style>
+</head>
+<body>
+
+<div class="aurora"></div>
+<div class="noise"></div>
+
+<div class="app">
+  <div class="topbar">
+    <div class="date" id="dateLabel">—</div>
+    <div class="icon-btn" id="settingsBtn" title="설정">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"></circle>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+      </svg>
+    </div>
+  </div>
+
+  <div class="grid">
+    <!-- CALENDAR TIMELINE -->
+    <div class="card timeline-card">
+      <div class="card-head">
+        <span class="card-title">오늘의 일정</span>
+        <span class="pill" id="calStatusPill"><span class="dot"></span><span id="calStatusText">연결 안 됨</span></span>
+      </div>
+      <div class="timeline-scroll" id="timelineScroll">
+        <div class="auth-state" id="authState">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>
+          <p>설정(⚙️)에서 Google Calendar를 연결하면<br>오늘 일정이 시간대별로 표시됩니다.</p>
+          <button class="btn" id="connectBtn">⚙️ 설정 열기</button>
+        </div>
+        <div class="timeline" id="timeline" style="display:none;"></div>
+      </div>
+    </div>
+
+    <div class="col-right">
+      <!-- CLOCK -->
+      <div class="card clock-card">
+        <div class="clock-time" id="clockTime">00:00<span class="sec" id="clockSec">:00</span></div>
+        <div class="clock-sub" id="clockSub">—</div>
+        <div class="day-ring-wrap">
+          <svg width="64" height="64" viewBox="0 0 64 64">
+            <circle class="day-ring-bg" cx="32" cy="32" r="27"></circle>
+            <circle class="day-ring-fg" id="dayRing" cx="32" cy="32" r="27" stroke-dasharray="169.6" stroke-dashoffset="169.6"></circle>
+          </svg>
+          <div class="day-ring-label" id="dayRingLabel">0%</div>
+        </div>
+      </div>
+
+      <!-- WEATHER -->
+      <div class="card weather-card">
+        <div class="card-head">
+          <span class="card-title">날씨</span>
+          <span class="pill" id="weatherRefreshBtn" title="새로고침">↻</span>
+        </div>
+        <div id="weatherBody">
+          <div class="auth-state">
+            <p>설정에서 OpenWeather API 키와<br>도시를 입력하면 날씨가 표시됩니다.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="brand">Made by <b>HS</b></footer>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <h2>⚙️ 설정</h2>
+
+    <!-- ── Google 캘린더 ── -->
+    <div class="modal-section">Google 캘린더</div>
+
+    <!-- 미연결 상태 -->
+    <div id="gcalSetupUI">
+      <div class="field">
+        <label>OAuth 2.0 클라이언트 ID</label>
+        <input type="text" id="gcalClientIdInput" placeholder="xxxxxxxx.apps.googleusercontent.com" autocomplete="off" spellcheck="false">
+        <div class="hint">
+          <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener">Google Cloud Console</a>에서
+          OAuth 2.0 클라이언트 ID(웹 애플리케이션)를 생성하세요.<br>
+          승인된 자바스크립트 원본에 이 사이트 주소를 추가해야 합니다.
+        </div>
+      </div>
+      <button class="gcal-connect-btn" id="gcalConnectBtn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+          <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+          <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+          <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+        </svg>
+        Google 연결
+      </button>
+    </div>
+
+    <!-- 연결됨 상태 -->
+    <div id="gcalConnectedUI" style="display:none;">
+      <div class="gcal-connected-banner">
+        <span class="gcal-connected-text">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6EE7C0" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Google 캘린더 연결됨
+        </span>
+        <button class="gcal-disconnect-btn" id="gcalDisconnectBtn">연결 해제</button>
+      </div>
+    </div>
+
+    <!-- ── 날씨 ── -->
+    <div class="modal-section">날씨</div>
+
+    <div class="field">
+      <label>OpenWeatherMap API 키</label>
+      <input type="text" id="weatherKeyInput" placeholder="API 키를 입력하세요" autocomplete="off" spellcheck="false">
+      <div class="hint"><a href="https://home.openweathermap.org/api_keys" target="_blank" rel="noopener">openweathermap.org</a>에서 무료로 발급받을 수 있습니다.</div>
+    </div>
+
+    <div class="field">
+      <label>도시 (도시명,국가코드)</label>
+      <input type="text" id="cityInput" placeholder="예: Suwon,KR  /  Seoul,KR">
+      <div class="hint">비워두면 서울(Seoul,KR)이 기본값으로 사용됩니다.</div>
+    </div>
+
+    <button class="wx-save-btn" id="weatherSaveBtn">날씨 저장 &amp; 불러오기</button>
+
+    <div class="modal-actions">
+      <button class="btn ghost" id="closeSettingsBtn">닫기</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ================================================================
+   SETTINGS — localStorage
+   ================================================================ */
+var LS_KEY = 'hs_dashboard_v2';
+
+function loadSettings(){
+  try{ return JSON.parse(localStorage.getItem(LS_KEY)) || {}; }catch(e){ return {}; }
+}
+function saveSettings(s){ try{ localStorage.setItem(LS_KEY, JSON.stringify(s)); }catch(e){} }
+var settings = loadSettings();
+
+/* ================================================================
+   SETTINGS MODAL
+   ================================================================ */
+var overlay          = document.getElementById('overlay');
+var gcalClientIdInput= document.getElementById('gcalClientIdInput');
+var weatherKeyInput  = document.getElementById('weatherKeyInput');
+var cityInput        = document.getElementById('cityInput');
+
+function openSettings(){
+  gcalClientIdInput.value = settings.clientId   || '';
+  weatherKeyInput.value   = settings.weatherKey || '';
+  cityInput.value         = settings.city        || '';
+  updateGCalUI();
+  overlay.classList.add('open');
+}
+function closeSettings(){ overlay.classList.remove('open'); }
+
+document.getElementById('settingsBtn').addEventListener('click', openSettings);
+document.getElementById('closeSettingsBtn').addEventListener('click', closeSettings);
+document.getElementById('connectBtn').addEventListener('click', openSettings);
+overlay.addEventListener('click', function(e){ if(e.target === overlay) closeSettings(); });
+
+/* ================================================================
+   CLOCK
+   ================================================================ */
+var clockTimeEl  = document.getElementById('clockTime');
+var clockSec     = document.getElementById('clockSec');
+var clockSub     = document.getElementById('clockSub');
+var dateLabel    = document.getElementById('dateLabel');
+var dayRing      = document.getElementById('dayRing');
+var dayRingLabel = document.getElementById('dayRingLabel');
+var RING_CIRC    = 2 * Math.PI * 27;
+var weekdays     = ['일','월','화','수','목','금','토'];
+
+function tickClock(){
+  var now  = new Date();
+  var hh   = String(now.getHours()).padStart(2,'0');
+  var mm   = String(now.getMinutes()).padStart(2,'0');
+  var ss   = String(now.getSeconds()).padStart(2,'0');
+  clockTimeEl.firstChild.textContent = hh + ':' + mm;
+  clockSec.textContent = ':' + ss;
+  var hour12 = now.getHours() % 12 || 12;
+  var ampm   = now.getHours() < 12 ? '오전' : '오후';
+  clockSub.innerHTML = '<b>' + ampm + '</b> ' + hour12 + '시 ' + mm + '분';
+  dateLabel.innerHTML = '<b>' + now.getFullYear() + '년 ' + (now.getMonth()+1) + '월 ' + now.getDate() + '일</b> ' + weekdays[now.getDay()] + '요일';
+  var pct = (now.getHours()*3600 + now.getMinutes()*60 + now.getSeconds()) / 86400;
+  dayRing.style.strokeDashoffset = RING_CIRC * (1 - pct);
+  dayRingLabel.textContent = Math.round(pct*100) + '%';
+  updateNowLine(now);
+}
+setInterval(tickClock, 1000);
+tickClock();
+
+/* ================================================================
+   GOOGLE CALENDAR
+   ─ index99.html의 로직을 그대로 이식
+   ================================================================ */
+var gcalToken        = null;
+var gcalTokenClient  = null;
+var gcalRefreshTimer = null;
+var gcalPollTimer    = null;
+var gcalGsiLoaded    = false;
+
+var calStatusPill = document.getElementById('calStatusPill');
+var calStatusText = document.getElementById('calStatusText');
+var gcalSetupUI   = document.getElementById('gcalSetupUI');
+var gcalConnectedUI = document.getElementById('gcalConnectedUI');
+
+/* 연결 상태 UI 업데이트 */
+function updateGCalUI(){
+  var connected = !!gcalToken;
+  gcalSetupUI.style.display    = connected ? 'none' : '';
+  gcalConnectedUI.style.display= connected ? ''     : 'none';
+  calStatusPill.classList.toggle('live', connected);
+  calStatusText.textContent = connected ? '연결됨' : '연결 안 됨';
+}
+
+/* 토큰 콜백 — index99와 동일 */
+function onGCalToken(tokenResponse){
+  if(tokenResponse.error){
+    alert('인증 오류: ' + tokenResponse.error + '\n\n승인된 자바스크립트 원본에 ' + location.origin + ' 을 추가했는지 확인하세요.');
+    return;
+  }
+  gcalToken = tokenResponse.access_token;
+  updateGCalUI();
+  fetchCalendarEvents();
+  if(gcalRefreshTimer) clearTimeout(gcalRefreshTimer);
+  gcalRefreshTimer = setTimeout(function(){
+    if(gcalTokenClient) gcalTokenClient.requestAccessToken({ prompt: 'consent' });
+  }, 55 * 60 * 1000);
+  if(!gcalPollTimer) gcalPollTimer = setInterval(fetchCalendarEvents, 5 * 60 * 1000);
+}
+
+/* 토큰 클라이언트 초기화 — index99와 동일 */
+function setupTokenClient(){
+  if(!window.google || !window.google.accounts || !settings.clientId) return;
+  gcalTokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: settings.clientId,
+    scope: 'https://www.googleapis.com/auth/calendar.readonly',
+    callback: onGCalToken
+  });
+}
+
+/* GSI 동적 로드 — index99와 동일 */
+function loadGsiAndSetup(callback){
+  if(gcalGsiLoaded){ if(callback) callback(); return; }
+  var s = document.createElement('script');
+  s.src = 'https://accounts.google.com/gsi/client';
+  s.async = true;
+  s.onload = function(){
+    gcalGsiLoaded = true;
+    setupTokenClient();
+    if(callback) callback();
+  };
+  document.head.appendChild(s);
+}
+
+/* Google 연결 버튼 — index99와 동일 */
+document.getElementById('gcalConnectBtn').addEventListener('click', function(){
+  var id = gcalClientIdInput.value.trim();
+  if(!id){ alert('OAuth 클라이언트 ID를 입력하세요.'); return; }
+  settings.clientId = id;
+  saveSettings(settings);
+  loadGsiAndSetup(function(){
+    setupTokenClient();
+    if(gcalTokenClient){
+      gcalTokenClient.requestAccessToken({ prompt: 'consent' });
+    }
+  });
+});
+
+/* 연결 해제 버튼 — index99와 동일 */
+document.getElementById('gcalDisconnectBtn').addEventListener('click', function(){
+  if(gcalToken && window.google && window.google.accounts){
+    try{ google.accounts.oauth2.revoke(gcalToken, function(){}); }catch(e){}
+  }
+  gcalToken = null;
+  if(gcalRefreshTimer){ clearTimeout(gcalRefreshTimer); gcalRefreshTimer = null; }
+  if(gcalPollTimer){ clearInterval(gcalPollTimer); gcalPollTimer = null; }
+  updateGCalUI();
+  resetTimeline();
+});
+
+/* 캘린더 이벤트 조회 */
+function fetchCalendarEvents(){
+  if(!gcalToken) return;
+  var now   = new Date();
+  var start = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+  var end   = new Date(now.getFullYear(), now.getMonth(), now.getDate()+1).toISOString();
+  fetch(
+    'https://www.googleapis.com/calendar/v3/calendars/primary/events' +
+    '?timeMin=' + encodeURIComponent(start) +
+    '&timeMax=' + encodeURIComponent(end) +
+    '&singleEvents=true&orderBy=startTime',
+    { headers:{ Authorization: 'Bearer ' + gcalToken } }
+  )
+  .then(function(res){
+    if(res.status === 401){
+      gcalToken = null; updateGCalUI(); resetTimeline();
+      if(gcalTokenClient) gcalTokenClient.requestAccessToken({ prompt: 'consent' });
+      return null;
+    }
+    return res.json();
+  })
+  .then(function(data){
+    if(!data) return;
+    if(data.error){ console.warn('GCal API:', data.error); return; }
+    var items = (data.items || []).map(function(ev){
+      return {
+        title:  ev.summary || '(제목 없음)',
+        start:  ev.start.dateTime ? new Date(ev.start.dateTime) : null,
+        end:    ev.end.dateTime   ? new Date(ev.end.dateTime)   : null,
+        allDay: !ev.start.dateTime
+      };
+    });
+    renderTimeline(items);
+  })
+  .catch(function(){ /* silent */ });
+}
+setInterval(fetchCalendarEvents, 5*60*1000);
+
+/* ================================================================
+   TIMELINE RENDER
+   ================================================================ */
+var authState  = document.getElementById('authState');
+var timelineEl = document.getElementById('timeline');
+
+function resetTimeline(){
+  authState.style.display  = '';
+  timelineEl.style.display = 'none';
+  timelineEl.innerHTML     = '';
+}
+
+function renderTimeline(events){
+  authState.style.display  = 'none';
+  timelineEl.style.display = 'block';
+  timelineEl.innerHTML     = '';
+
+  var allDay = events.filter(function(e){ return e.allDay; });
+  var timed  = events.filter(function(e){ return !e.allDay; });
+
+  if(allDay.length){
+    var wrap = document.createElement('div');
+    wrap.style.marginBottom = '14px';
+    wrap.style.marginLeft   = '-42px';
+    allDay.forEach(function(e){
+      var chip = document.createElement('div');
+      chip.className = 'event-chip';
+      chip.style.borderLeftColor = 'var(--secondary)';
+      chip.innerHTML = '<span class="t" style="color:var(--secondary)">하루 종일</span><span>' + escHtml(e.title) + '</span>';
+      wrap.appendChild(chip);
+    });
+    timelineEl.appendChild(wrap);
+  }
+
+  for(var h = 0; h < 24; h++){
+    var row  = document.createElement('div');
+    row.className    = 'hour-row';
+    row.dataset.hour = h;
+
+    var lbl  = document.createElement('div');
+    lbl.className   = 'hour-label';
+    lbl.textContent = String(h).padStart(2,'0') + ':00';
+
+    var tick = document.createElement('div');
+    tick.className = 'hour-tick';
+
+    var evW  = document.createElement('div');
+    evW.className = 'events-in-hour';
+
+    timed.filter(function(e){ return e.start && e.start.getHours() === h; }).forEach(function(e){
+      var isPast = e.end && e.end < new Date();
+      var chip   = document.createElement('div');
+      chip.className = 'event-chip' + (isPast ? ' done' : '');
+      var ts = String(e.start.getHours()).padStart(2,'0') + ':' + String(e.start.getMinutes()).padStart(2,'0');
+      chip.innerHTML = '<span class="t">' + ts + '</span><span>' + escHtml(e.title) + '</span>';
+      evW.appendChild(chip);
+    });
+
+    row.appendChild(lbl);
+    row.appendChild(tick);
+    row.appendChild(evW);
+    timelineEl.appendChild(row);
+  }
+
+  updateNowLine(new Date());
+  scrollToNow();
+}
+
+function updateNowLine(now){
+  var old = document.querySelector('.now-line');
+  if(old) old.remove();
+  if(timelineEl.style.display === 'none') return;
+  var row = timelineEl.querySelector('.hour-row[data-hour="' + now.getHours() + '"]');
+  if(!row) return;
+  var pct = now.getMinutes() / 60;
+  var nl  = document.createElement('div');
+  nl.className = 'now-line';
+  nl.style.top = (pct * row.offsetHeight) + 'px';
+  var hh = String(now.getHours()).padStart(2,'0');
+  var mm = String(now.getMinutes()).padStart(2,'0');
+  nl.innerHTML = '<div class="dot"></div><div class="line"></div><div class="label">' + hh + ':' + mm + '</div>';
+  row.style.position = 'relative';
+  row.appendChild(nl);
+}
+
+function scrollToNow(){
+  var row      = timelineEl.querySelector('.hour-row[data-hour="' + new Date().getHours() + '"]');
+  var scroller = document.getElementById('timelineScroll');
+  if(row && scroller) scroller.scrollTop = row.offsetTop - 40;
+}
+
+/* ================================================================
+   WEATHER
+   ─ index99.html의 로직을 그대로 이식
+   ================================================================ */
+var weatherBody    = document.getElementById('weatherBody');
+var weatherPollTimer = null;
+
+var OWM_ICONS = {
+  '01d':'☀️','01n':'🌙','02d':'⛅','02n':'⛅',
+  '03d':'☁️','03n':'☁️','04d':'☁️','04n':'☁️',
+  '09d':'🌧️','09n':'🌧️','10d':'🌦️','10n':'🌧️',
+  '11d':'⛈️','11n':'⛈️','13d':'❄️','13n':'❄️',
+  '50d':'🌫️','50n':'🌫️'
+};
+
+/* fetchWeather — index99와 동일 */
+function fetchWeather(){
+  var key = settings.weatherKey;
+  if(!key){
+    weatherBody.innerHTML = '<div class="auth-state"><p>설정에서 OpenWeather API 키와<br>도시를 입력하면 날씨가 표시됩니다.</p></div>';
+    return;
+  }
+  var city = settings.city || 'Seoul,KR';
+  var url  = 'https://api.openweathermap.org/data/2.5/weather?q=' + encodeURIComponent(city) + '&units=metric&lang=kr&appid=' + key;
+  fetch(url)
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if(d.cod !== 200) throw new Error(d.message || String(d.cod));
+      var icon = (d.weather && d.weather[0]) ? d.weather[0].icon : '01d';
+      var desc = (d.weather && d.weather[0]) ? d.weather[0].description : '';
+      var emoji = OWM_ICONS[icon] || '🌡️';
+      weatherBody.innerHTML =
+        '<div class="weather-main">' +
+          '<div>' +
+            '<div class="weather-temp">' + Math.round(d.main.temp) + '°</div>' +
+            '<div class="weather-city">' + escHtml(d.name) + '</div>' +
+            '<div class="weather-desc">' + escHtml(desc) + '</div>' +
+          '</div>' +
+          '<div style="font-size:3.5rem;line-height:1;">' + emoji + '</div>' +
+        '</div>' +
+        '<div class="weather-meta">' +
+          '<div><div class="v">' + Math.round(d.main.feels_like) + '°</div><div class="k">체감</div></div>' +
+          '<div><div class="v">' + d.main.humidity + '%</div><div class="k">습도</div></div>' +
+          '<div><div class="v">' + d.wind.speed.toFixed(1) + '</div><div class="k">풍속 m/s</div></div>' +
+        '</div>';
+    })
+    .catch(function(err){
+      weatherBody.innerHTML = '<div class="auth-state"><p>날씨를 불러오지 못했습니다.<br><small style="color:var(--danger)">' + escHtml(err.message) + '</small></p></div>';
+    });
+}
+
+/* initWeather — index99와 동일 */
+function initWeather(){
+  if(!settings.weatherKey){ fetchWeather(); return; }
+  fetchWeather();
+  if(weatherPollTimer) clearInterval(weatherPollTimer);
+  weatherPollTimer = setInterval(fetchWeather, 10 * 60 * 1000);
+}
+
+/* 날씨 저장 & 불러오기 버튼 — index99와 동일 */
+document.getElementById('weatherSaveBtn').addEventListener('click', function(){
+  var key  = weatherKeyInput.value.trim();
+  var city = cityInput.value.trim();
+  settings.weatherKey = key;
+  settings.city       = city;
+  saveSettings(settings);
+  initWeather();
+});
+
+document.getElementById('weatherRefreshBtn').addEventListener('click', fetchWeather);
+
+/* ================================================================
+   UTIL
+   ================================================================ */
+function escHtml(str){
+  var d = document.createElement('div');
+  d.textContent = str || '';
+  return d.innerHTML;
+}
+
+/* ================================================================
+   INIT
+   ================================================================ */
+window.addEventListener('load', function(){
+  updateGCalUI();
+  initWeather();
+  /* 저장된 clientId가 있으면 GSI를 미리 로드 (자동 팝업 없이) */
+  if(settings.clientId) loadGsiAndSetup();
+  /* 첫 실행 시 설정 자동 오픈 */
+  if(!settings.clientId && !settings.weatherKey) setTimeout(openSettings, 600);
+});
+</script>
+</body>
+</html>
